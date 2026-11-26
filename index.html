@@ -80,7 +80,7 @@
 
   .sign{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:14px;text-align:center;font-weight:bold;font-size:12px;}
   .sign .line{margin:32px auto 4px;}
-  .sign input.namefld{display:inline-block;width:18ch;}
+  .sign input.namefld{display:inline-block;width:18ch;min-width:18ch;max-width:95%;text-align:center;padding:2px 6px;box-sizing:content-box;}
   .rolesel{font-weight:bold;font-size:12px;text-align:center;text-align-last:center;border:1px solid #9bb4d4;border-radius:4px;background:#eef5ff;width:auto;padding:1px 4px;}
 
   .footer{margin-top:12px;text-align:center;font-size:9.5px;line-height:1.5;border-top:1px solid #ccc;padding-top:6px;}
@@ -577,6 +577,17 @@
   function syncScope(){var v=document.getElementById('f_scope').value;document.querySelectorAll('.scopetxt').forEach(function(e){e.textContent=v;});
     document.querySelectorAll('.circref').forEach(function(e){e.style.display='';});}
   function syncShip(){syncScope();syncFormcode();var s=document.getElementById('f_shipmaster');document.getElementById('f_shipmaster_print').textContent=s.value;}
+  /* ช่องชื่อผู้ตรวจ / ผู้อนุมัติ: ขยายความกว้างตามความยาวชื่อ */
+  var __mctx=document.createElement('canvas').getContext('2d');
+  function fitName(el){
+    if(!el)return;
+    var cs=getComputedStyle(el);
+    __mctx.font=cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
+    var t=(el.value||'').toUpperCase();
+    var w=__mctx.measureText(t).width+(parseFloat(cs.letterSpacing)||0)*t.length+6;
+    el.style.width=Math.ceil(w)+'px';
+  }
+  function fitNames(){fitName(document.getElementById('f_insp_name'));fitName(document.getElementById('f_appr_name'));}
 
   function collect(){
     var d={fields:{},rows:[],checks:{}};
@@ -593,7 +604,7 @@
     FIELDS.forEach(function(f){var e=document.getElementById(f);if(e&&d.fields&&d.fields[f]!=null){e.value=d.fields[f];if(e.tagName==='SELECT'&&e.selectedIndex<0)e.selectedIndex=0;}});
     var b=document.getElementById('rows');b.innerHTML='';
     (d.rows&&d.rows.length?d.rows:[{},{}]).forEach(function(r){b.appendChild(makeRow(r));});
-    renumber();buildChecklist(d.checks);syncLab();syncShip();
+    renumber();buildChecklist(d.checks);syncLab();syncShip();fitNames();
   }
   function scheduleSave(){if(saveTimer)clearTimeout(saveTimer);saveTimer=setTimeout(saveStore,500);}
   function saveStore(){
@@ -631,7 +642,7 @@
     if(typeof setEditRow==='function')setEditRow(null);
     FIELDS.forEach(function(f){var e=document.getElementById(f);if(!e)return;if(e.tagName==='SELECT')e.selectedIndex=0;else e.value='';});
     setDefaults();
-    document.getElementById('rows').innerHTML='';addRow(2);buildChecklist();syncLab();syncShip();scheduleSave();
+    document.getElementById('rows').innerHTML='';addRow(2);buildChecklist();syncLab();syncShip();fitNames();scheduleSave();
   }
 
   /* ================= CLOUD (Google Sheet ของ PFA) ================= */
@@ -759,7 +770,7 @@
     if(!confirm('สร้างใบรับรองใหม่? ข้อมูลปัจจุบันในฟอร์มจะถูกล้าง'))return;
     setEditRow(null);
     FIELDS.forEach(function(f){var e=document.getElementById(f);if(!e)return;if(e.tagName==='SELECT')e.selectedIndex=0;else e.value='';});
-    setDefaults();document.getElementById('rows').innerHTML='';addRow(2);buildChecklist();syncLab();syncShip();syncScope();syncInline();scheduleSave();
+    setDefaults();document.getElementById('rows').innerHTML='';addRow(2);buildChecklist();syncLab();syncShip();syncScope();syncInline();fitNames();scheduleSave();
     cstatus('ฟอร์มใหม่พร้อมแล้ว ✓');closeCertList();window.scrollTo(0,0);
   }
   function openSheet(){var u='';try{u=localStorage.getItem(SURL_KEY)||'';}catch(e){}
@@ -806,8 +817,9 @@
     document.getElementById('f_foamtest').addEventListener('change',syncLab);
     document.getElementById('f_scope').addEventListener('change',function(){syncScope();syncInline();});
     document.getElementById('f_shipmaster').addEventListener('change',syncShip);
+    ['f_insp_name','f_appr_name'].forEach(function(id){var e=document.getElementById(id);if(e)e.addEventListener('input',function(){fitName(e);});});
     window.addEventListener('beforeprint',function(){
-      syncShip();var e=document.getElementById('f_items');if(!e.value.trim()&&rowCount())e.value=rowCount();
+      syncShip();fitNames();var e=document.getElementById('f_items');if(!e.value.trim()&&rowCount())e.value=rowCount();
       layoutForPrint();
     });
     window.addEventListener('afterprint',clearFillers);
@@ -820,6 +832,7 @@
     var loaded=false;
     try{var s=localStorage.getItem(KEY);if(s){apply(JSON.parse(s));loaded=true;}}catch(e){}
     if(!loaded){setDefaults();addRow(2);buildChecklist();syncLab();syncShip();}
+    fitNames();
     window.__editRow=null;
     if(getCloudUrl())cstatus('เชื่อมต่อ Google Sheet แล้ว ✓');
   });
